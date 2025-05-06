@@ -1,3 +1,21 @@
+const inputButtons = document.querySelectorAll('.input');
+const numberButtons = document.querySelectorAll('.number');
+const operatorButtons = document.querySelectorAll('.operator');
+const equalButton = document.querySelector('.equals');
+const delButton = document.querySelector('#del');
+const clearButton = document.querySelector('#clear');
+const primaryDisplay = document.querySelector('#primary')
+const secondaryDisplay = document.querySelector('#secondary');
+const viewArea = document.querySelector('.view-area');
+
+const state = {
+    firstVal: null, 
+    secondVal: null,
+    operator: null,
+    isNewLine: true,
+}
+
+
 function add(first, second) {
     return cleanFloat(Number(first) + Number(second));
 }
@@ -38,110 +56,125 @@ function cleanFloat(num, precision=12) {
 }
 
 
+/* Button functions */
 
-
-
-function inputNumbers(display, secondary_display) {
-    let inputButtons = document.querySelectorAll('.input');
-    display.innerText = '0';
-    //numArr will hold the first and second number
-    let numArr = [];
-    //eventHistory will hold the last type of input entered
-    let eventHistory = [];
-    //operatorHistory will hold both the previous operator and the current operator
-    let operatorHistory = [];
-    inputButtons.forEach((button) => {
+function inputNumbersToDisplay(buttons, display, secondary_display, state) {
+    buttons.forEach((button) => {
         button.addEventListener('click', () => {
-            if(button.classList.contains('operator')) {
-                numArr.push(display.innerText);
-                if(button.classList.contains('equals')) {
-                    //when input equals operator
-                    if(numArr.length == 1) {
-                        display.innerText = numArr[0];
-                        numArr = [];
-                    }else {
-                        let result = operate(operatorHistory[operatorHistory.length -1], numArr);
-                        display.innerText = result;
-                        secondary_display.innerText = numArr[0] + operatorHistory[operatorHistory.length - 1] + numArr[1] + button.innerText;
-                        numArr = [];
-                    }
-                } else {
-                    //when input an operator like add, subtract, multiply and divide     
-                    if(eventHistory[eventHistory.length-1] == 'operator') {
-                        numArr.pop();
-                        operatorHistory.shift();
-                        operatorHistory.push(button.innerText);
-                        secondary_display.innerText = secondary_display.innerText.slice(0, secondary_display.innerText.length -1) + operatorHistory[operatorHistory.length - 1];
-                    }
-                    else if(numArr.length == 2) {
-                        //if there are enough numbers to do a calculation 
-                        operatorHistory.push(button.innerText);
-                        let result = operate(operatorHistory[operatorHistory.length - 1], numArr);
-                        display.innerText = result;
-                        secondary_display.innerText = result + operatorHistory[operatorHistory.length - 1];
-                        numArr = [result]; 
-                        eventHistory.push('operator');
-                        operatorHistory.shift();
-                    }else {
-                        //if there are not enough numbers to do a calculation
-                        operatorHistory.push(button.innerText);
-                        secondary_display.innerText = numArr[0] + operatorHistory[operatorHistory.length - 1];
-                        eventHistory.push('operator');
-                    }
-                } 
+            if(display.innerText == 'ERROR!') {
+                clearBtnFunc(display, secondary_display, state)
             }
-            else if(button.classList.contains('number')) {
-                //if the display only shows 0 (either no input yet or only 0s has been input, reset the display first) {
-                if((display.innerText == '0' || eventHistory[eventHistory.length-1] == 'operator') && !button.classList.contains('period')) {
-                    display.innerText = '';
-                    display.innerText += button.innerText;
-                }else {
-                    //when number is input, display on calculator
-                    display.innerText += button.innerText;
-                }
-                eventHistory.push('number');
+            if((display.innerText == '0' && !button.classList.contains('period')) || state.isNewLine) display.innerText = '';
+            if(display.innerText.includes('.') && button.classList.contains('period')) return;
+            else {
+                display.innerText += button.innerText;
+                state.isNewLine = false;
             }
         });
-    });
-
-    inputDeleteButtons(display, secondary_display);
-
+    })
 }
 
-
-function inputDeleteButtons(display, secondary_display) {
-    let clearButton = document.querySelector('#clear');
-    let delButton = document.querySelector('#del');
-    delButton.addEventListener('click', () => {
-        if(display.innerText.length == 1) {
-            display.innerText = '0';
-        }else {
-            display.innerText = display.innerText.slice(0, display.innerText.length-1);
-        }
+function inputOperator(buttons, display, secondary_display, state){
+    buttons.forEach((button) => {
+        button.addEventListener('click', () => { 
+            state.firstVal == null ? state.firstVal = display.innerText : state.secondVal = display.innerText;
+            //if the user enters an equation, but follows it up with another operator instead of equals.
+            if(state.firstVal != null && state.secondVal != null && state.operator != null){
+                new_operator = button.innerText;
+                showContinuousEquation(display, secondary_display, state, new_operator);
+            }else {
+                state.operator = button.innerText; 
+                showHalfCompleteEquation(display, secondary_display, state);
+            }
+            console.log(state);
+        });
     });
+}
+
+function inputEquals(equal_btn, display, secondary_display, state) {
+    equal_btn.addEventListener('click', () => {
+        if(state.operator == null) return;
+        state.secondVal = display.innerText;
+        showCompleteEquation(display, secondary_display, state);
+    })
+}
+
+function deleteBtnFunc(del_button, display) {
+    del_button.addEventListener('click', () => {
+        display.innerText = display.innerText.slice(0, display.innerText.length-1);
+        if(display.innerText.length == 0) setDisplayToZero(display);
+    });
+}
+
+function clearBtn(clr_button, display, secondary_display, state) {
+    clr_button.addEventListener('click', () => clearBtnFunc(display, secondary_display, state));
+}
+
+function clearBtnFunc(display, secondary_display, state) {
+    state.firstVal = null;
+    state.secondVal = null;
+    state.operator = null;
+    state.isNewLine = true;
+    setDisplayToZero(display);
+    setSecondaryDisplayToEmpty(secondary_display);
+}
+
+/* Display Manipulation */
+function setDisplayToZero(display) {
+    display.innerText = '0';
+}
+
+function setSecondaryDisplayToEmpty(display) {
+    display.innerText = '';
+}
+
+function showHalfCompleteEquation(display, secondary_display, state) {
+    secondary_display.innerText = `${state.firstVal} ${state.operator}`;
+    setDisplayToZero(display);
+    state.isNewLine = true;
+}
+
+function showCompleteEquation(display, secondary_display, state) {
+    let result = operate(state.operator, [state.firstVal, state.secondVal])
+    secondary_display.innerText = `${state.firstVal} ${state.operator} ${state.secondVal} =`
+    display.innerText = result;
+    state.firstVal = result;
+    state.isNewLine = true;
+    state.operator = null;
+}
+
+function showContinuousEquation(display, secondary_display, state, new_operator) {
+    if(state.firstVal == display.innerText) {
+        state.operator = new_operator;
+        secondaryDisplay.innerText = `${state.firstVal} ${state.operator}`;
+        return;
+    }
+    let result = operate(state.operator, [state.firstVal, state.secondVal]);
+    secondary_display.innerText = `${result} ${new_operator}`;
     
-    clearButton.addEventListener('click', () => {
-        display.innerText = '0';
-        secondary_display.innerText = '';
-        numArr = [];
-        eventHistory = [];
-        operatorHistory = [];
-    });
 
+    display.innerText = result;
+    state.isNewLine = true;
+    state.operator = new_operator;
+    state.firstVal = result;
+    console.log(state);
 }
 
 
-function newInstance() {
-    //create divs for view area
-    let primaryDisplay = document.createElement('div');
-    let secondaryDisplay = document.createElement('div');
-    primaryDisplay.id = 'primary'
-    secondaryDisplay.id = 'secondary'
 
-    let viewArea = document.querySelector('.view-area');
-    viewArea.append(secondaryDisplay);
-    viewArea.append(primaryDisplay);
-    inputNumbers(primaryDisplay, secondaryDisplay);
-}
 
-newInstance();
+
+
+setDisplayToZero(primaryDisplay);
+inputNumbersToDisplay(numberButtons, primaryDisplay, secondaryDisplay, state);
+inputOperator(operatorButtons, primaryDisplay, secondaryDisplay, state);
+inputEquals(equalButton, primaryDisplay, secondaryDisplay, state);
+deleteBtnFunc(delButton, primaryDisplay);
+clearBtn(clearButton, primaryDisplay, secondaryDisplay, state);
+
+
+
+
+
+
+
